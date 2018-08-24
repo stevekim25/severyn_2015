@@ -23,6 +23,25 @@ def clean_str(string):
     return string.strip().lower()
 
 
+def load_data(filepath, vocab_tupe=None):
+    data = list(set(open(filepath).readlines()))
+    data = [d.split(',') for d in data]
+    data = [d for d in data if len(d)==3]
+
+    print(len(data))
+    # get left and rightdata and split
+    data_left = [clean_str(x[0]) for x in data]
+    max_left = max([len(x.split()) for x in data_left])
+    data_right = [clean_str(x[1]) for x in data]
+    max_right = max([len(x.split()) for x in data_right])
+
+    print(max_left, max_right)
+
+    # get label
+    data_label = np.array([int(x[2]) for x in data])
+
+    return data_left, data_right, data_label, max_left, max_right
+'''
 def load_data_and_labels(positive_data_file, negative_data_file):
     """
     Loads MR polarity data from files, splits the data into words and generates labels.
@@ -41,7 +60,7 @@ def load_data_and_labels(positive_data_file, negative_data_file):
     negative_labels = [[1, 0] for _ in negative_examples]
     y = np.concatenate([positive_labels, negative_labels], 0)
     return [x_text, y]
-
+'''
 
 def batch_iter(data, batch_size, num_epochs, shuffle=True):
     """
