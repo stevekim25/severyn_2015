@@ -1,2 +1,1 @@
-본 프로젝트 참조하여 제작:
-
+README: Still Developing.
