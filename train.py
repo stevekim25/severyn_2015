@@ -72,7 +72,9 @@ def train():
             log_device_placement=FLAGS.log_device_placement)
         sess = tf.Session(config=session_conf)
         with sess.as_default():
-            #model = Model()
+            filter_sizes = [3,4,5]
+            #model = Model(max_sent, 2, text_vocab_processor.vocabulary_,
+            #    FLAG.embedding_size, filter_sizes, num_filters, FLAG.l2_reg_lambda)
             global_step = tf.Variable(0, name="global_step", trainable=False)
             train_op = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(model.loss, global_step=global_step)
             timestamp = str(int(time.time()))
