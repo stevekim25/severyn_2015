@@ -8,13 +8,12 @@ import time
 import datetime
 import argparse
 import data_helpers
-#from model import Model
+from model import Model
 from tensorflow.contrib import learn
 
 # Parameters
 
 args = argparse.ArgumentParser()
-args.add_argument("--embedding_dim", type=int, default=300, help="Dimensionality of character embedding (default: 300)")
 args.add_argument("--dropout_keep_prob", type=float, default=.5, help="Dropout keep probability (default: 0.5)")
 args.add_argument("--train_file", type=str, default="./data/train.txt", help="train data (default: ./data/train.txt)")
 args.add_argument("--test_file", type=str, default="./data/test/txt", help="test data (default: ./data/test.txt)")
@@ -24,6 +23,8 @@ args.add_argument("--dev_sample_percentage", type=float, default=.1, help="devel
 args.add_argument("--word2vec", type=str, default=None, help="Word2vec file with pre-trained embeddings")
 args.add_argument("--embedding_dim", type=int, default=300, help="Dimensionality of character embedding (default: 300)")
 args.add_argument("--hidden_size", type=int, default=128, help="Dimensionality of character embedding (default: 128)")
+args.add_argument("--filter_sizes", type=str, default='[3,4,5]', help='Filter sizes (default: [3,4,5])')
+args.add_argument("--num_filters", type=int, default=100, help='Filter sizes (default: 100)')
 args.add_argument("--l2_reg_lambda", type=float, default=.0, help="L2 regularization labda (default: 0.0)")
 
 # Training Parameters
@@ -68,13 +69,13 @@ def train():
 
     with tf.Graph().as_default():
         session_conf = tf.ConfigProto(
-            allow_sort_placement=FLAGS.allow_soft_placement,
+            allow_soft_placement=FLAGS.allow_soft_placement,
             log_device_placement=FLAGS.log_device_placement)
         sess = tf.Session(config=session_conf)
         with sess.as_default():
-            filter_sizes = [3,4,5]
-            #model = Model(max_sent, 2, text_vocab_processor.vocabulary_,
-            #    FLAG.embedding_size, filter_sizes, num_filters, FLAG.l2_reg_lambda)
+            filter_sizes = eval(FLAGS.filter_sizes)
+            model = Model(max_left, max_right, 2, len(text_vocab_processor.vocabulary_),
+                FLAGS.embedding_dim, filter_sizes, FLAGS.num_filters, FLAGS.hidden_size, FLAGS.l2_reg_lambda)
             global_step = tf.Variable(0, name="global_step", trainable=False)
             train_op = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(model.loss, global_step=global_step)
             timestamp = str(int(time.time()))
@@ -86,7 +87,7 @@ def train():
 
             # Train Summaries
             train_summary_op = tf.summary.merge([loss_summary, acc_summary])
-            train_sumamry_dir = os.path.join(out_dir, "summaries", "train")
+            train_summary_dir = os.path.join(out_dir, "summaries", "train")
             train_summary_writer = tf.summary.FileWriter(train_summary_dir, sess.graph)
 
             # Dev Summaries
@@ -101,7 +102,7 @@ def train():
                 os.makedirs(checkpoint_dir)
             saver = tf.train.Saver(tf.global_variables(), max_to_keep = FLAGS.num_checkpoints)
 
-            text_vocabulary_processor.save(os.path.join(out_dir, "text_vocab"))
+            text_vocab_processor.save(os.path.join(out_dir, "text_vocab"))
 
             # Initialize all variables
             sess.run(tf.global_variables_initializer())
@@ -127,21 +128,21 @@ def train():
                             idx = text_vocab_processor.vocabulary_.get(word)
                             if idx != 0:
                                 initW[idx] = np.fromstring(f.read(binary_len), dtype='float32')
-                                else:
-                                    f.read(binary_len)
+                            else:
+                                f.read(binary_len)
                 sess.run(model.W_text.assign(initW))
 
             batches = data_helpers.batch_iter(
                 list(zip(x_left_train, x_right_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
             # Training loop. For each batch...
             for batch in batches:
-                x_left_batch, x_right_batch = zip(*batch)
+                x_left_batch, x_right_batch, y_batch = zip(*batch)
                 # Train
                 feed_dict = {
-                    model.input_left: x_left_batch
-                    model.input_right: x_right_batch
-                    model.input_y: y_batch
-                    rnn.dropout_keep_prob: FLAGS.dropout_keep_prob
+                    model.input_left: x_left_batch,
+                    model.input_right: x_right_batch,
+                    model.input_y: y_batch,
+                    model.dropout_keep_prob: FLAGS.dropout_keep_prob
                 }
                 _, step, summaries, loss, accuracy = sess.run(
                     [train_op, global_step, train_summary_op, model.loss, model.accuracy], feed_dict)

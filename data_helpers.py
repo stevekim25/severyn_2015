@@ -38,7 +38,14 @@ def load_data(filepath, vocab_tupe=None):
     print(max_left, max_right)
 
     # get label
-    data_label = np.array([int(x[2]) for x in data])
+    labels = [int(x[2]) for x in data]
+    data_labels = []
+    for l in labels:
+        if l == 1:
+            data_labels.append([0,1])
+        else:
+            data_labels.append([1,0])
+    data_label = np.array(data_labels)
 
     return data_left, data_right, data_label, max_left, max_right
 '''
